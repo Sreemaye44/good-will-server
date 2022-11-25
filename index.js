@@ -31,7 +31,8 @@ async function run(){
         })
 
         app.get('/users', async(req,res)=>{
-            const query={};
+            const userCategory=req.query.userCategory;
+            const query = userCategory === undefined ? {}:  {userCategory:userCategory};
             const result=await userCollection.find(query).toArray();
             res.send(result)
         })
@@ -90,13 +91,35 @@ async function run(){
 
       })
 
+      app.patch('/my-products/:id', async(req,res)=>{
+        const id=req.params.id;
+        const advertiseEnable=req.body.advertiseEnable
+        const query={_id:ObjectId(id)}
+        const updateDoc={
+            $set:{
+                advertiseEnable: advertiseEnable
+            }
+        }
+        const result= await productCollection.updateOne(query,updateDoc);
+        res.send(result);
+
+      })
+
+      app.get('/advertise', async(req,res)=>{
+        const advertiseEnable=req.query.advertiseEnable;
+        const query = advertiseEnable === undefined ? {}:  {advertiseEnable:advertiseEnable};
+        const result= await productCollection.find(query).toArray();
+        res.send(result)
+    })
         app.post('/products', async(req,res)=>{
             const product = req.body;
             product.createdAt = new Date();
             product.status = "";
+            product.advertiseEnable = false;
             const result= await productCollection.insertOne(product);
             res.send(result);
         })
+
         app.post('/bookings', async(req,res)=>{
             const booking = req.body;
             console.log(booking)
@@ -113,10 +136,30 @@ async function run(){
             const updatedProduct={
                 $set: {
                     message: product.soldStatus,
-                    modifyAt: new Date()
+                    modifyAt: new Date().toISOString(),
+
                 }
             }
             const result= await productCollection.updateOne(filter, updatedProduct, option);
+            res.send(result);
+
+        })
+
+        // app.patch('/products', async(req,res)=>{
+        //     const updateDoc={
+        //         $set:{
+        //             advertiseEnable: false
+        //         }
+        //     }
+        //     const result= await productCollection.updateMany({},updateDoc,{upsert: true});
+        //     res.send(result);
+        // })
+
+        app.delete('/users/:id', async(req,res)=>{
+
+            const id=req.params.id;
+            const filter={_id:ObjectId(id)};
+            const result=await userCollection.deleteOne(filter);
             res.send(result);
         })
 
