@@ -76,6 +76,20 @@ async function run(){
             res.json(result)
     })
 
+    app.patch('/my-products/:id', async(req,res)=>{
+        const id=req.params.id;
+        const status=req.body.status
+        const query={_id:ObjectId(id)}
+        const updateDoc={
+            $set:{
+                status: status
+            }
+        }
+        const result= await productCollection.updateOne(query,updateDoc);
+        res.send(result);
+
+      })
+
         app.post('/products', async(req,res)=>{
             const product = req.body;
             product.createdAt = new Date();
