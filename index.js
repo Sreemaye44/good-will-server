@@ -13,38 +13,6 @@ app.use(express.json());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ewurel7.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
-// const PRODUCT = {
-//     name,
-//     imageUri,
-//     price,
-//     condition,
-//     mobileNumber,
-//     location,
-//     description,
-//     purchaseYear,
-//     categoryId,
-//     ownerId,
-//     createdAt,
-//     modifiedAt
-// }
-
-// const USER ={
-//     name,
-//     email,
-//     address,
-//     mobileNumber,
-//     role,
-//     enable,
-//     createdAt,
-//     modifiedAt
-// }
-
-// const CATEGORY ={
-//     categoryName,
-//     photo,
-//     createdAt,
-//     modifiedAt
-// }
 
 async function run(){
     try{
@@ -99,6 +67,14 @@ async function run(){
             const result=await productCollection.find(query).toArray();
             res.send(result)
         })
+        app.get('/my-products', async (req, res) => {
+            const email = req.query.email
+            console.log(email)
+            const query = {createdBy: email}
+            const result =await productCollection.find(query).toArray();
+            console.log(result);
+            res.json(result)
+    })
 
         app.post('/products', async(req,res)=>{
             const product = req.body;
