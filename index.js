@@ -52,6 +52,7 @@ async function run(){
         const categoryCollection=client.db('goodWillStore').collection('Categories');
         const userCollection=client.db('goodWillStore').collection('Users');
         const productCollection=client.db('goodWillStore').collection('Products');
+        const bookingCollection=client.db('goodWillStore').collection('bookingInfo');
 
         
         app.get('/users/:id', async(req,res)=>{
@@ -79,10 +80,9 @@ async function run(){
             res.send(result)
         })
 
-        app.get('/categories/:id', async(req,res)=>{
+        app.get('/products/category/:id', async(req,res)=>{
             const categoryId = req.params.id;
             const query={categoryId:categoryId};
-            console.log(query);
             const result=await productCollection.find(query).toArray();
             res.send(result)
         })
@@ -105,6 +105,13 @@ async function run(){
             product.createdAt = new Date();
             product.status = "";
             const result= await productCollection.insertOne(product);
+            res.send(result);
+        })
+        app.post('/bookings', async(req,res)=>{
+            const booking = req.body;
+            console.log(booking)
+            booking.createdAt = new Date();
+            const result= await bookingCollection.insertOne(booking);
             res.send(result);
         })
 
