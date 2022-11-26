@@ -18,6 +18,23 @@ const client = new MongoClient(uri, {
 	serverApi: ServerApiVersion.v1,
 });
 
+function verifyJWT(req,res,next){
+    const authHeader=req.headers.authorization;
+   // console.log(authHeader);
+    if(!authHeader){
+        return res.status(401).send('unauthorized access');
+
+    }
+    const token=authHeader.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN, function(err, decoded){
+        if(err){
+            return res.status(403).send({message: 'forbidden access'})
+        }
+        req.decoded=decoded;
+        next();
+    })
+};
+
 async function run() {
 	try {
 		const categoryCollection = client
@@ -220,6 +237,21 @@ async function run() {
 			const booking = req.body;
 			booking.createdAt = new Date();
 			const result = await bookingCollection.insertOne(booking);
+			res.send(result);
+		});
+
+        app.get("/bookings", async (req, res) => {
+			const email = req.query.email;
+			console.log(email);
+			const query = { email: email };
+			const result = await bookingCollection.find(query).toArray();
+			res.json(result);
+        });
+        
+        app.get("/bookings/:id", async (req, res) => {
+			const id = req.params.id;
+			const filter = { _id: ObjectId(id) };
+			const result = await bookingCollection.findOne(filter);
 			res.send(result);
 		});
 
