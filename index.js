@@ -39,9 +39,46 @@ async function run(){
 
         app.post('/users', async(req,res)=>{
             const user = req.body;
+            user.verify = "";
             const result= await userCollection.insertOne(user);
             res.send(result);
         })
+
+        app.patch('/users/:id', async(req,res)=>{
+            const id=req.params.id;
+            const verify=req.body.verify
+            const query={_id:ObjectId(id)}
+            const updateDoc={
+                $set:{
+                    verify: verify
+                }
+            }
+            const result= await userCollection.updateOne(query,updateDoc);
+            res.send(result);
+    
+          })
+
+        app.get('/users/admin/:email',async(req,res)=>{
+            const email=req.params.email;
+            const query={email};
+            const user=await userCollection.findOne(query);
+            res.send({isAdmin: user?.role==='admin'})
+          })  
+
+        app.get('/users/buyer/:email',async(req,res)=>{
+            const email=req.params.email;
+            const query={email};
+            const user=await userCollection.findOne(query);
+            res.send({isBuyer: user?.userCategory
+                ==='Buyer'})
+          })   
+        app.get('/users/seller/:email',async(req,res)=>{
+            const email=req.params.email;
+            const query={email};
+            const user=await userCollection.findOne(query);
+            res.send({isSeller: user?.userCategory
+                ==='Seller'})
+          })   
 
         app.get('/categories', async(req,res)=>{
             const query={};
@@ -68,44 +105,60 @@ async function run(){
             const result=await productCollection.find(query).toArray();
             res.send(result)
         })
+
         app.get('/my-products', async (req, res) => {
             const email = req.query.email
             console.log(email)
             const query = {createdBy: email}
             const result =await productCollection.find(query).toArray();
-            console.log(result);
             res.json(result)
     })
 
-    app.patch('/my-products/:id', async(req,res)=>{
+      app.put('/my-products/:id', async(req,res)=>{
         const id=req.params.id;
-        const status=req.body.status
-        const query={_id:ObjectId(id)}
-        const updateDoc={
-            $set:{
-                status: status
+        const advertiseEnable=req.query.advertiseEnable;
+        const status = req.query.status ;
+        const query={_id:ObjectId(id)};
+        const option= {upsert: true};
+        let updateDoc={}
+
+        if(advertiseEnable !== undefined){
+            updateDoc = {
+                $set: 
+                    { 
+                        advertiseEnable: advertiseEnable === 'true' ? true : false,
+                        modifyAt: new Date().toISOString()           
+                    } 
             }
         }
-        const result= await productCollection.updateOne(query,updateDoc);
+
+        if(status !== undefined){
+            updateDoc = {
+                $set: 
+                    { 
+                        status: status,
+                        modifyAt: new Date().toISOString()           
+                    } 
+            }
+        }
+
+        if(status !== undefined && advertiseEnable !== undefined){
+            updateDoc = {
+                $set: 
+                    { 
+                        status: status,
+                        advertiseEnable: advertiseEnable === 'true' ? true : false,
+                        modifyAt: new Date().toISOString()           
+                    } 
+            }  
+          }
+
+        const result= await productCollection.updateOne(query,updateDoc,option);
         res.send(result);
 
       })
 
-      app.patch('/my-products/:id', async(req,res)=>{
-        const id=req.params.id;
-        const advertiseEnable=req.body.advertiseEnable
-        const query={_id:ObjectId(id)}
-        const updateDoc={
-            $set:{
-                advertiseEnable: advertiseEnable
-            }
-        }
-        const result= await productCollection.updateOne(query,updateDoc);
-        res.send(result);
-
-      })
-
-      app.get('/advertise', async(req,res)=>{
+      app.get('/products/advertise', async(req,res)=>{
         const advertiseEnable=req.query.advertiseEnable;
         const query = advertiseEnable === undefined ? {}:  {advertiseEnable:advertiseEnable};
         const result= await productCollection.find(query).toArray();
@@ -122,7 +175,6 @@ async function run(){
 
         app.post('/bookings', async(req,res)=>{
             const booking = req.body;
-            console.log(booking)
             booking.createdAt = new Date();
             const result= await bookingCollection.insertOne(booking);
             res.send(result);
@@ -155,6 +207,13 @@ async function run(){
         //     res.send(result);
         // })
 
+        app.delete('/my-products/:id', async(req,res)=>{
+
+            const id=req.params.id;
+            const filter={_id:ObjectId(id)};
+            const result=await productCollection.deleteOne(filter);
+            res.send(result);
+        })
         app.delete('/users/:id', async(req,res)=>{
 
             const id=req.params.id;
