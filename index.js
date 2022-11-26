@@ -43,12 +43,12 @@ async function run() {
 			res.status(403).send({ accessToken: " " });
 		});
 
-        app.get("/users", async (req, res) => {
+		app.get("/users", async (req, res) => {
 			const query = {};
 			const result = await userCollection.find(query).toArray();
 			res.send(result);
-        });
-        
+		});
+
 		app.get("/users/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: ObjectId(id) };
@@ -62,7 +62,7 @@ async function run() {
 				userCategory === undefined ? {} : { userCategory: userCategory };
 			const result = await userCollection.find(query).toArray();
 			res.send(result);
-        });
+		});
 
 		app.post("/users", async (req, res) => {
 			const user = req.body;
@@ -126,7 +126,25 @@ async function run() {
 		app.get("/products/category/:id", async (req, res) => {
 			const categoryId = req.params.id;
 			const query = { categoryId: categoryId };
-			const result = await productCollection.find(query).toArray();
+			//const result = await productCollection.find(query).toArray();
+			const result = await productCollection.aggregate([
+				//join with user collection
+				{
+					$lookup: {
+						from: "Users", // other table name
+						localField: "createdBy", // name of users table field
+						foreignField: "email", // name of userinfo table field
+						as: "user_info", // alias for userinfo table
+					},
+				},
+				// define some conditions here
+				{
+					$match: {
+						$and: [{ categoryId: categoryId }],
+					},
+				},
+				// define which fields are you want to fetch
+			]).toArray();
 			res.send(result);
 		});
 
