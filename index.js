@@ -66,15 +66,15 @@ async function run() {
 			res.send(result);
 		});
 
-		app.get("/users/:id", async (req, res) => {
+		app.get("/users/user/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: ObjectId(id) };
 			const result = await userCollection.findOne(query);
 			res.send(result);
 		});
 
-		app.get("/users", async (req, res) => {
-			const userCategory = req.query.userCategory;
+		app.get("/users/user-type/:userCategory", async (req, res) => {
+			const userCategory = req.params.userCategory;
 			const query =
 				userCategory === undefined ? {} : { userCategory: userCategory };
 			const result = await userCollection.find(query).toArray();
@@ -121,6 +121,14 @@ async function run() {
 			const user = await userCollection.findOne(query);
 			res.send({ isSeller: user?.userCategory === "Seller" });
 		});
+
+		// app.get("/users/:userCategory", async (req, res) => {
+		// 	const userCategory = req.params.userCategory;
+		// 	const query = { userCategory: userCategory };
+		// 	const result = await userCollection.find(query).toArray();
+		// 	res.send(result);
+		// });
+		
 
 		app.get("/categories", async (req, res) => {
 			const query = {};
