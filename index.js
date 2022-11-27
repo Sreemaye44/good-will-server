@@ -205,10 +205,11 @@ async function run() {
 				};
 			}
 
-			if (status !== undefined) {
+			if (status !== undefined && status==='SOLD') {
 				updateDoc = {
 					$set: {
 						status: status,
+						advertiseEnable:false,
 						modifyAt: new Date().toISOString(),
 					},
 				};
