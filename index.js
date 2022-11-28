@@ -48,6 +48,9 @@ async function run() {
 		const paymentsCollection = client
 			.db("goodWillStore")
 			.collection("payments");
+		const wishlistCollection = client
+			.db("goodWillStore")
+			.collection("wishlist");
 
 		app.post("/create-payment-intent", async (req, res) => {
 			const booking = req.body;
@@ -297,6 +300,17 @@ async function run() {
 			const result = await productCollection.insertOne(product);
 			res.send(result);
 		});
+		app.post("/wishlist", async (req, res) => {
+			const wishlist = req.body;
+			const result = await wishlistCollection.insertOne(wishlist);
+			res.send(result);
+		});
+		app.get("/wishlist",  async (req, res) => {
+			const email = req.query.email;
+			const query = { email: email };
+			const result = await wishlistCollection.find(query).toArray();
+			res.json(result);
+		});git 
 
 		app.post("/bookings", async (req, res) => {
 			const booking = req.body;
