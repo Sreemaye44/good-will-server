@@ -69,23 +69,23 @@ async function run() {
 			});
 		});
 
-		app.post("/payments", async (req, res) => {
-			const payment = req.body;
-			const result = await paymentsCollection.insertOne(payment);
-			const id = payment.bookingId;
-			const filter = { _id: ObjectId(id) };
-			const updatedDoc = {
-				$set: {
-					paid: true,
-					transactionId: payment.transactionId,
-				},
-			};
-			const updateResult = await bookingCollection.updateOne(
-				filter,
-				updatedDoc
-			);
-			res.send(result);
-		});
+		// app.post("/payments", async (req, res) => {
+		// 	const payment = req.body;
+		// 	const result = await paymentsCollection.insertOne(payment);
+		// 	const id = payment.bookingId;
+		// 	const filter = { _id: ObjectId(id) };
+		// 	const updatedDoc = {
+		// 		$set: {
+		// 			paid: true,
+		// 			transactionId: payment.transactionId,
+		// 		},
+		// 	};
+		// 	const updateResult = await bookingCollection.updateOne(
+		// 		filter,
+		// 		updatedDoc
+		// 	);
+		// 	res.send(result);
+		// });
 
 		app.get("/jwt", async (req, res) => {
 			const email = req.query.email;
@@ -391,19 +391,33 @@ async function run() {
 		});
 
 		app.post("/payments", async (req, res) => {
+			console.log(req.path)
 			const payment = req.body;
+			console.log(payment);
+
 			const result = await paymentsCollection.insertOne(payment);
-			const id = payment.bookingId;
-			const filter = { _id: ObjectId(id) };
-			const updatedDoc = {
-				$set: {
-					paid: true,
-					transactionId: payment.transactionId,
-				},
-			};
-			const updateResult = await bookingCollection.updateOne(
-				filter,
-				updatedDoc
+
+			const filterBooking = { _id: ObjectId(payment.bookingId) };
+			
+
+			const updateBooking = await bookingCollection.updateOne(
+				filterBooking,
+				{
+					$set: {
+						paid: true,
+					},
+				}
+			);
+			
+			const filterProduct = { _id: ObjectId( payment.itemId) };
+
+			const updateProduct = await productCollection.updateOne(
+				filterProduct,
+				{
+					$set: {
+						status: "SOLD",
+					},
+				}
 			);
 			res.send(result);
 		});
