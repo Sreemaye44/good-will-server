@@ -114,13 +114,29 @@ async function run() {
 			res.send(result);
 		});
 
+		app.get("/users/user/wishlist/:id", async (req, res) => {
+			const id = req.params.id;
+			const result = await userCollection.find(query).toArray();
+			res.send(result);
+		});
+
+		// app.patch('/users/wishlist', async (req, res) => {
+		// 	const updateDoc = {
+		// 		$set: {
+		// 			wishList: []
+		// 		}
+		// 	}
+		// 	const result = await userCollection.updateMany({ userCategory: "Buyer" }, updateDoc, { upsert: true });
+		// 	res.send(result);
+		// });
+
+
 		app.post("/users", verifyJWT, async (req, res) => {
-			console.log("created new google user1")
 			const user = req.body;
 			let result = await userCollection.findOne({ email: user.email });
 			if (result === null) {
-				console.log("created new google user")
 				user.verify = "";
+				user.wishList = [];
 				result = await userCollection.insertOne(user);
 			}
 			res.send(result);
@@ -375,6 +391,11 @@ async function run() {
 				filter,
 				updatedDoc
 			);
+			res.send(result);
+		});
+
+		app.get("/payments", async (req, res) => {
+			const result = await paymentsCollection.find({}).toArray();
 			res.send(result);
 		});
 	} finally {
