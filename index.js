@@ -212,6 +212,11 @@ async function run() {
 				.aggregate([
 					//join with user collection
 					{
+						$match: {
+							"$and": [{categoryId: categoryId,status:""}]
+						}
+					},
+					{
 						$lookup: {
 							from: "Users", // other table name
 							localField: "createdBy", // name of users table field
@@ -220,12 +225,7 @@ async function run() {
 						},
 					},
 					// define some conditions here
-					{
-						$match: {
-							$and: [{ categoryId: categoryId }],
-							$and: [{ status: "" }],
-						},
-					},
+
 					// define which fields are you want to fetch
 				])
 				.toArray();
@@ -310,7 +310,7 @@ async function run() {
 			const query = { email: email };
 			const result = await wishlistCollection.find(query).toArray();
 			res.json(result);
-		});git 
+		});
 
 		app.post("/bookings", async (req, res) => {
 			const booking = req.body;
@@ -325,7 +325,7 @@ async function run() {
 			// if (email !== decodedEmail) {
 			// 	return res.status(403).send({ message: "forbidden access" });
 			// }
-			const query = { email: email };
+			const query = email === undefined ? {} : { email: email };
 			const result = await bookingCollection.find(query).toArray();
 			res.json(result);
 		});
