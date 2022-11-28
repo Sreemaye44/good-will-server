@@ -3,6 +3,7 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 const app = express();
@@ -18,22 +19,21 @@ const client = new MongoClient(uri, {
 	serverApi: ServerApiVersion.v1,
 });
 
-function verifyJWT(req,res,next){
-    const authHeader=req.headers.authorization;
-   // console.log(authHeader);
-    if(!authHeader){
-        return res.status(401).send('unauthorized access');
-
-    }
-    const token=authHeader.split(' ')[1];
-    jwt.verify(token, process.env.ACCESS_TOKEN, function(err, decoded){
-        if(err){
-            return res.status(403).send({message: 'forbidden access'})
-        }
-        req.decoded=decoded;
-        next();
-    })
-};
+function verifyJWT(req, res, next) {
+	const authHeader = req.headers.authorization;
+	// console.log(authHeader);
+	if (!authHeader) {
+		return res.status(401).send("unauthorized access");
+	}
+	const token = authHeader.split(" ")[1];
+	jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+		if (err) {
+			return res.status(403).send({ message: "forbidden access" });
+		}
+		req.decoded = decoded;
+		next();
+	});
+}
 
 async function run() {
 	try {
@@ -45,19 +45,52 @@ async function run() {
 		const bookingCollection = client
 			.db("goodWillStore")
 			.collection("bookingInfo");
+		const paymentsCollection = client
+			.db("goodWillStore")
+			.collection("payments");
+
+		app.post("/create-payment-intent", async (req, res) => {
+			const booking = req.body;
+			const itemPrice = booking.itemPrice;
+			const amount = itemPrice * 100;
+
+			// Create a PaymentIntent with the order amount and currency
+			const paymentIntent = await stripe.paymentIntents.create({
+				currency: "usd",
+				amount: amount,
+				payment_method_types: ["card"],
+			});
+
+			res.send({
+				clientSecret: paymentIntent.client_secret,
+			});
+		});
+
+		app.post("/payments", async (req, res) => {
+			const payment = req.body;
+			const result = await paymentsCollection.insertOne(payment);
+			const id = payment.bookingId;
+			const filter = { _id: ObjectId(id) };
+			const updatedDoc = {
+				$set: {
+					paid: true,
+					transactionId: payment.transactionId,
+				},
+			};
+			const updateResult = await bookingCollection.updateOne(
+				filter,
+				updatedDoc
+			);
+			res.send(result);
+		});
 
 		app.get("/jwt", async (req, res) => {
 			const email = req.query.email;
-			const query = { email: email };
-			const user = await userCollection.findOne(query);
-			if (user) {
-				const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
-					expiresIn: "1h",
-				});
-				return res.send({ accessToken: token });
-			}
 
-			res.status(403).send({ accessToken: " " });
+			const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
+				expiresIn: "1h",
+			});
+			return res.send({ accessToken: token });
 		});
 
 		app.get("/users", async (req, res) => {
@@ -81,10 +114,15 @@ async function run() {
 			res.send(result);
 		});
 
-		app.post("/users", async (req, res) => {
+		app.post("/users", verifyJWT, async (req, res) => {
+			console.log("created new google user1")
 			const user = req.body;
-			user.verify = "";
-			const result = await userCollection.insertOne(user);
+			let result = await userCollection.findOne({ email: user.email });
+			if (result === null) {
+				console.log("created new google user")
+				user.verify = "";
+				result = await userCollection.insertOne(user);
+			}
 			res.send(result);
 		});
 
@@ -128,7 +166,6 @@ async function run() {
 		// 	const result = await userCollection.find(query).toArray();
 		// 	res.send(result);
 		// });
-		
 
 		app.get("/categories", async (req, res) => {
 			const query = {};
@@ -142,8 +179,8 @@ async function run() {
 			res.send(result);
 		});
 
-		app.get("/products/advertise", async (req, res) => {
-			const query = { advertiseEnable: true };
+		app.get("/products/advertise", verifyJWT, async (req, res) => {
+			const query = { advertiseEnable: true,status:"" };
 			const result = await productCollection.find(query).toArray();
 			res.send(result);
 		});
@@ -152,24 +189,27 @@ async function run() {
 			const categoryId = req.params.id;
 			const query = { categoryId: categoryId };
 			//const result = await productCollection.find(query).toArray();
-			const result = await productCollection.aggregate([
-				//join with user collection
-				{
-					$lookup: {
-						from: "Users", // other table name
-						localField: "createdBy", // name of users table field
-						foreignField: "email", // name of userinfo table field
-						as: "user_info", // alias for userinfo table
+			const result = await productCollection
+				.aggregate([
+					//join with user collection
+					{
+						$lookup: {
+							from: "Users", // other table name
+							localField: "createdBy", // name of users table field
+							foreignField: "email", // name of userinfo table field
+							as: "user_info", // alias for userinfo table
+						},
 					},
-				},
-				// define some conditions here
-				{
-					$match: {
-						$and: [{ categoryId: categoryId }],
+					// define some conditions here
+					{
+						$match: {
+							$and: [{ categoryId: categoryId }],
+							$and: [{ status: "" }],
+						},
 					},
-				},
-				// define which fields are you want to fetch
-			]).toArray();
+					// define which fields are you want to fetch
+				])
+				.toArray();
 			res.send(result);
 		});
 
@@ -205,11 +245,11 @@ async function run() {
 				};
 			}
 
-			if (status !== undefined && status==='SOLD') {
+			if (status !== undefined && status === "SOLD") {
 				updateDoc = {
 					$set: {
 						status: status,
-						advertiseEnable:false,
+						advertiseEnable: false,
 						modifyAt: new Date().toISOString(),
 					},
 				};
@@ -249,15 +289,18 @@ async function run() {
 			res.send(result);
 		});
 
-        app.get("/bookings", async (req, res) => {
+		app.get("/bookings",  async (req, res) => {
 			const email = req.query.email;
-			console.log(email);
+			// const decodedEmail = req.decoded.email;
+			// if (email !== decodedEmail) {
+			// 	return res.status(403).send({ message: "forbidden access" });
+			// }
 			const query = { email: email };
 			const result = await bookingCollection.find(query).toArray();
 			res.json(result);
-        });
-        
-        app.get("/bookings/:id", async (req, res) => {
+		});
+
+		app.get("/bookings/:id", async (req, res) => {
 			const id = req.params.id;
 			const filter = { _id: ObjectId(id) };
 			const result = await bookingCollection.findOne(filter);
@@ -314,6 +357,24 @@ async function run() {
 				.find(query)
 				.sort({ creationDate: -1 })
 				.toArray();
+			res.send(result);
+		});
+
+		app.post("/payments", async (req, res) => {
+			const payment = req.body;
+			const result = await paymentsCollection.insertOne(payment);
+			const id = payment.bookingId;
+			const filter = { _id: ObjectId(id) };
+			const updatedDoc = {
+				$set: {
+					paid: true,
+					transactionId: payment.transactionId,
+				},
+			};
+			const updateResult = await bookingCollection.updateOne(
+				filter,
+				updatedDoc
+			);
 			res.send(result);
 		});
 	} finally {
